@@ -1,9 +1,6 @@
 
 #Note: Vx should be Vz
 import numpy as np
-#from pylab import *
-#import matplotlib.pyplot as plt
-#import matplotlib.mlab as ml
 from Counter import Countercomm
 from CQTdevices import *
 import time
@@ -35,11 +32,13 @@ dds_probe_port='/dev/ioboards/dds_QO0037'
 channel_probe=1
 dds_probe=DDSComm(dds_probe_port,channel_probe)
 
+
+#dds channel for REPUMP
 dds_mot_port='/dev/ioboards/dds_QO0019'
-channel_mot=1
+channel_mot=0
 dds_mot=DDSComm(dds_mot_port,channel_mot)
 
-amplmot=600
+amplmot=500
 amplprobe=140
 ##############################################################################################
 
@@ -61,19 +60,17 @@ def setV(Vx,Vy):
     socket.send(command2)
     message=socket.recv()
 
-def getCount(miniusb,channel=0,average=10):
+def getCount(miniusb,channel=0,average=10,c=0):
     counts=[]
     for i in range(average):
         counts.append(miniusb.get_counts(channel))
     average_count=np.mean(counts)
-    return average_count
-
-def getCountMax(miniusb,channel=0,average=10):
-    counts=[]
-    for i in range(average):
-        counts.append(miniusb.get_counts(channel))
     max_count=np.max(counts)
-    return max_count
+    if c==0:
+        return average_count
+    else:
+        return (average_count,max_count)
+
 def return_initial():
     print('Setting the Piezo back to the initial values before the measurement')
     setV(V0x,V0y)
@@ -101,9 +98,9 @@ socket.send("CheckVolt 6")
 V0x=float((socket.recv()).split()[-1])
 print('Initial Voltage: ',V0x,V0y)
 #Scanning
-rangeVx=0.05
-rangeVy=0.05
-stepV=0.01
+rangeVx=0.06
+rangeVy=0.06
+stepV=0.02
 numStepx=int(rangeVx/stepV)
 numStepy=int(rangeVy/stepV)
 xgrid = np.arange(-numStepx ,numStepx+1)*stepV
@@ -119,7 +116,9 @@ yscan = []
 
 
 
-sp.call(['./telegram_report.sh','Cavity','#################################### \\n From Skynet \\n Starting new experiment'])
+sp.call(['./telegram_report.sh','Cavity','#################################### \\n From Skynet \\n Starting new experiment 3Dmap_alignment \\n '])
+
+
 #employ a rastering scan to possibly reduce hysterisis of PZT
 #to generate all Vsteps for rastering scan
 # define some grids
@@ -150,19 +149,21 @@ for i in range(np.size(xscan)):
     time.sleep(0.5)
     
     #Fmotoff=getcount
-    Fmotoff=getCountMax(miniusb)
+    Fmotoff=getCount(miniusb)
     Tcount[i,3]=Fmotoff
     print('Fmotoff ',Fmotoff)
+
     #MOTon
-    dds_mot.on(amplmot)
-    
-    #Fmoton=getcount
-    Fmoton=getCountMax(miniusb,average=200)
+    dds_mot.on(amplmot)    
+    (Fmoton,Fmotonmax)=getCount(miniusb,average=200,c=1)
     Tcount[i,2]=Fmoton
     print('Fmoton: ',Fmoton)
+    print('Fmoton_max: ',Fmoton_max)
+
+
     #Hygience check for atom
     deltaF_tolerance=100
-    if (Fmoton-Fmotoff)<=50:
+    if (Fmotonmax-Fmotoff)<=50:
         print('\x1b[6;30;42m' + 'Fail atom check. Exiting...' + '\x1b[0m')
         return_initial()
 
@@ -177,7 +178,7 @@ for i in range(np.size(xscan)):
     time.sleep(1)
     
     #Tmoton=getcount
-    Tcount[i,4]=getCount(miniusb,average=1000)
+    Tcount[i,4]=getCount(miniusb,average=500)
     
     #MOT off
     dds_mot.off()
