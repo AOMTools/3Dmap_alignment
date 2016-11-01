@@ -1,5 +1,6 @@
 
 #Note: Vx should be Vz
+#Modify for scanning in time
 import numpy as np
 from Counter import Countercomm
 from CQTdevices import *
@@ -160,7 +161,7 @@ for i in range(np.size(xscan)):
     print('Fmoton: ',Fmoton)
     print('Fmoton_max: ',Fmotonmax)
 
-
+    '''
     #Hygience check for atom
     deltaF_tolerance=100
     if (i%2)==0:
@@ -175,6 +176,7 @@ for i in range(np.size(xscan)):
             exit()
         print('Pass the atom check')
         print('Continue with measurement')
+    '''
     #Probe ON
     dds_probe.on(amplprobe)
 

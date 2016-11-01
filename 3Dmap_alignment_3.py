@@ -1,5 +1,6 @@
 
 #Note: Vx should be Vz
+#Modify for scanning in time
 import numpy as np
 from Counter import Countercomm
 from CQTdevices import *
@@ -86,11 +87,16 @@ miniusb.set_gate_time(30)
 wf_port=''
 #wf=WindFreakUsb2(wf_port)
 
-#filenam
-filename='landscape_ext_2.dat'
+##################################  
+#Parameters defnition
+##################################
+#filename
 
 
-#Parmeters defnition
+#number of times
+numtime=10
+
+
 #Retrieve current voltage set to PZT as the initial VX0,VY0
 socket.send("CheckVolt 5")
 V0y=float((socket.recv()).split()[-1])
@@ -98,9 +104,9 @@ socket.send("CheckVolt 6")
 V0x=float((socket.recv()).split()[-1])
 print('Initial Voltage: ',V0x,V0y)
 #Scanning
-rangeVx=0.06
-rangeVy=0.06
-stepV=0.02
+rangeVx=0.05
+rangeVy=0.05
+stepV=0.01
 numStepx=int(rangeVx/stepV)
 numStepy=int(rangeVy/stepV)
 xgrid = np.arange(-numStepx ,numStepx+1)*stepV
@@ -109,7 +115,7 @@ print(xgrid)
 xscan = []
 yscan = []
 
-
+#########################################
 
 
 
@@ -129,78 +135,36 @@ for i, yi in enumerate(ygrid):
 # squeeze lists together to vectors
 xscan = np.concatenate(xscan)
 yscan = np.concatenate(yscan)
-Tcount=np.zeros((np.size(xscan),6))
+
 #sending voltage and measurement
 
 print('Start the measurement..')
-for i in range(np.size(xscan)):
-    print('Set Vx Vy to: ',xscan[i],yscan[i])
-    print(np.asarray((xscan[i],yscan[i])))
-    
-    setV(xscan[i]+V0x,yscan[i]+V0y)
-    time.sleep(0.5)
+for j in range(numtime):
+    Tcount=[]
+    for i in range(np.size(xscan)):
+        print('Set Vx Vy to: ',xscan[i],yscan[i])
+        #print(np.asarray((xscan[i],yscan[i])))
 
-    #Probeoff
-    dds_probe.off()
+        setV(xscan[i]+V0x,yscan[i]+V0y)
+        time.sleep(0.5)
+        Tcount.append(getCount(miniusb,average=100))
 
-    #MOToff
-    dds_mot.off()
+        print('\n')
+        progress_deg=int(np.size(xscan)/(i+1))
+    print('Finish '+str(j)+'th iteration')
+    print('Saving data...')
+    filename='f'+str(j)+'.dat'
+    result=np.column_stack((xscan,yscan,Tcount))
+    np.savetxt(filename,result,fmt='%1.3f')
+    print('Moving to the next iteration')
+    print('#############################')
 
-    time.sleep(0.5)
-    
-    #Fmotoff=getcount
-    Fmotoff=getCount(miniusb)
-    Tcount[i,3]=Fmotoff
-    print('Fmotoff ',Fmotoff)
-
-    #MOTon
-    dds_mot.on(amplmot)    
-    (Fmoton,Fmotonmax)=getCount(miniusb,average=300,c=1)
-    Tcount[i,2]=Fmoton
-    print('Fmoton: ',Fmoton)
-    print('Fmoton_max: ',Fmotonmax)
-
-
-    #Hygience check for atom
-    deltaF_tolerance=100
-    if (i%2)==0:
-        print('Checking atom...')
-        if (Fmotonmax-Fmotoff)<=40:
-            print('\x1b[6;30;42m' + 'Fail atom check. Exiting...' + '\x1b[0m')
-            return_initial()
-
-            messg='Fail atom check at ' + str(i)+ 'th iteration'
-            sp.call(['./telegram_report.sh','Cavity',messg])
-        #	sp.call([READPROG+" -W -e 'msg Cavity Please check and restart measurement' "],shell=True)
-            exit()
-        print('Pass the atom check')
-        print('Continue with measurement')
-    #Probe ON
-    dds_probe.on(amplprobe)
-
-    time.sleep(1)
-    
-    #Tmoton=getcount
-    Tcount[i,4]=getCount(miniusb,average=500)
-    
-    #MOT off
-    dds_mot.off()
-
-    time.sleep(0.5)
-    
-    #Tmotoff=getcount
-    Tcount[i,5]=getCount(miniusb,average=100)
-
-    print('Tmoton, Tmotoff ',Tcount[i,4],Tcount[i,5])
-    print('\n')
-    progress_deg=int(np.size(xscan)/(i+1))
-    if (progress_deg==2):
+    if (j==5):
         messg='Progress reported: 50% completed'
         sp.call(['./telegram_report.sh','Cavity',messg])
 print('Experiment finished')
 print('Saving data...')
-result=np.column_stack((xscan,yscan,Tcount))
-np.savetxt(filename,result,fmt='%1.3f')
+
 
 sp.call([READPROG+" -W -e 'msg Cavity Experiment finished...' "],shell=True)
 #Close connections
