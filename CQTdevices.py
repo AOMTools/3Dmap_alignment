@@ -9,7 +9,7 @@ v1.0
 
 import serial
 import subprocess as sp
-import json   
+import json
 import numpy as np
 import time
 
@@ -17,12 +17,12 @@ import time
 
 class WindFreakUsb2(object):
     """
-    The first character of any communication to the SynthUSBii unit is the command.  (It is 
-    case sensitive.)  What this character tells the unit to do is detailed below. Ideally a 
-    “package” is sent all at once. For example a communication for programming the 
-    frequency of the LO to 1GHz would be sent as “f1000.0” (without the quotes).  
-    For commands that return information from the SynthUSBii unit, such as reading the 
-    firmware version, it is advisable to send the command and then read the bytes returned 
+    The first character of any communication to the SynthUSBii unit is the command.  (It is
+    case sensitive.)  What this character tells the unit to do is detailed below. Ideally a
+    “package” is sent all at once. For example a communication for programming the
+    frequency of the LO to 1GHz would be sent as “f1000.0” (without the quotes).
+    For commands that return information from the SynthUSBii unit, such as reading the
+    firmware version, it is advisable to send the command and then read the bytes returned
     fairly quickly to get them out of the USB buffer in your PC.
     f) RF Frequency Now (MHz) 1000.000
     o) set RF On(1) or Off(0) 1
@@ -50,27 +50,27 @@ class WindFreakUsb2(object):
     +) Model Type
     -) Serial Number  2
     ?) help
-    Please keep in mind that the device expects the format shown.  For example if you send 
-    simply just an “f” the processor will sit there and wait for the rest of the data and may 
-    appear locked up.  If you dont send the decimal point and at least one digit afterward, it 
-    will have unexpected results. Also, please send data without hidden characters such as a 
+    Please keep in mind that the device expects the format shown.  For example if you send
+    simply just an “f” the processor will sit there and wait for the rest of the data and may
+    appear locked up.  If you dont send the decimal point and at least one digit afterward, it
+    will have unexpected results. Also, please send data without hidden characters such as a
     carriage return at the end.
     """
     baudrate = 115200
-        
+
     def __init__(self, port):
         self.serial = self._open_port(port)
         self._serial_write('\n')# flush io buffer
         print (self._serial_read()) #will read unknown command
         self.set_clock(1)
-        
-        
+
+
     def _open_port(self, port):
         ser = serial.Serial(port, self.baudrate, timeout=1)
         ser.readline()
         ser.timeout = 1
         return ser
-        
+
     def _serial_write2(self, string):
         self.serial.write((string + '\n').encode('UTF-8'))
     def _serial_write(self, string2):
@@ -81,64 +81,64 @@ class WindFreakUsb2(object):
         print(msg_string)
         msg_string = msg_string.rstrip()
         return msg_string
-        
+
     def get_freq(self):
         self._serial_write('f?')
         return self._serial_read()
-    
+
     def rf_on(self):
         self._serial_write('o1')
         return self._serial_read()
-    
+
     def rf_off(self):
         self._serial_write('o0')
         return self._serial_read()
-    
+
     def rf_power_low(self):
         self._serial_write('h0')
-    
+
     def rf_power_high(self):
         self._serial_write('h1')
-    
+
     def set_pulse_mode(self,value):
         self._serial_write('j' + str(value))
-    
+
     def get_pulse_mode(self):
         self._serial_write('j?')
         return self._serial_read()
-        
+
     def get_power(self):
         self._serial_write('a?')
         return self._serial_read()
-        
+
     def set_freq(self,value):
         self._serial_write('f' + str(value))
         return self._serial_read()
-        
+
     def check_osci(self):
         self._serial_write('p')
         return self._serial_read()
-    
+
     def set_clock(self,value):
         self._serial_write('x' + str(value))
         return self._serial_read()
-    
+
     def get_clock(self):
         self._serial_write('x?')
         return self._serial_read()
-    
+
     def set_power(self,value):
         self._serial_write('a' + str(value))
         return self._serial_read()
-    
+
     def serial_number(self):
         self._serial_write('+')
         return self._serial_read()
-        
+
     def close(self):
         self.serial.close()
     def slow_set_freq(self,freq,step):
-    
+
         current_f=float(self.get_freq())/1000
         print(current_f)
         detun_f=freq-current_f
@@ -147,7 +147,7 @@ class WindFreakUsb2(object):
         f_set=current_f
         for i in range(int(abs(ns))):
             f_set=f_set+np.sign(detun_f)*step
-            print(f_set)    
+            print(f_set)
             self.set_freq(f_set)
         print('Start moving cavity slowly...')
         current_f=float(self.get_freq())/1000
@@ -158,88 +158,88 @@ class WindFreakUsb2(object):
             f_set=f_set+np.sign(detun_f)
             print(f_set)
             self.set_freq(f_set)
-        
-            
+
+
         print('Finish moving')
         print('Final freq',self.get_freq())
 
 
-        
+
 class AnalogComm(object):
 # Module for communicating with the mini usb IO board
     """
     Mini analog IO unit.
-    
+
     Usage: Send plaintext commands, separated by newline/cr or semicolon.
            An eventual reply comes terminated with cr+lf.
-    
+
     Important commands:
-    
+
     *IDN?     Returns device identifier
     *RST      Resets device, outputs are 0V.
     OUT  <channel> <value>
               Sets <channel> (ranging from 0 to 2) to
               the voltage <value>. Use 2.5 as value, not 2.5E0
     IN?  <channel>
-              Returns voltage of input <channel> (ranging from 0 to 3).             
-    ALLIN?    Returns all voltages                                                  
-    HELP      Print this help text.                                                 
-    ON /OFF   Switches the analog unit on/off.                                      
-    DIGOUT <value>                                                                  
-              Sets the digital outputs to the                                       
-              binary value (ranging from 0..3).                                     
-                                                                                    
-    REMARK:                                                                         
-    Output ranges from 0V to 4.095V. Input is capacitive and ranges                 
-    from 0V to 4.095V.                                                              
+              Returns voltage of input <channel> (ranging from 0 to 3).
+    ALLIN?    Returns all voltages
+    HELP      Print this help text.
+    ON /OFF   Switches the analog unit on/off.
+    DIGOUT <value>
+              Sets the digital outputs to the
+              binary value (ranging from 0..3).
+
+    REMARK:
+    Output ranges from 0V to 4.095V. Input is capacitive and ranges
+    from 0V to 4.095V.
     """
     baudrate = 115200
     def __init__(self, port):
         self.serial = self._open_port(port)
-        self._serial_write('*IDN?')# flush io buffer
-        print (self._serial_read()) #will read a command
+        #self._serial_write('*IDN?')# flush io buffer
+        #print (self._serial_read()) #will read a command
         self.reset() #Resets device so correct voltages read
-        
-    
+
+
     def _open_port(self, port):
         ser = serial.Serial(port, timeout=0.5)
         ser.readline()
-        ser.timeout = 0.5 
+        ser.timeout = 0.5
         return ser
-    
+
     def _serial_write(self, string):
         self.serial.write((string + ';').encode('UTF-8'))
-    
+
     def _serial_read(self):
         msg_string = self.serial.readline().decode()
         # Remove any linefeeds etc
         msg_string = msg_string.rstrip()
         return msg_string
-    
+
     def reset(self):
         self._serial_write('*RST')
         return self._serial_read()
-        
+
     def get_voltage(self,channel):
         self._serial_write('IN?' + str(channel))
         voltage = self._serial_read()
         return voltage
-        
+
     def get_voltage_all(self):
         self._serial_write('ALLIN?')
         allin = self._serial_read()
         return allin
-    
-    
+
+
     def set_voltage(self,channel,value):
         self._serial_write('OUT'+ str(channel) + str(value))
-        return 
-    
+        return
+
     def set_digitout(self,value):
         self._serial_write('DIGOUT' + str(value))
         return
-    
-    def close(self): 
+
+    def close(self):
         self.serial.close()
 
     def serial_number(self):
@@ -247,29 +247,29 @@ class AnalogComm(object):
         return self._serial_read()
 
 class PowerMeterComm(object):
-# Module for communicating with the power meter 
+# Module for communicating with the power meter
     '''
-    Simple optical power meter.                                                    
-                                                                               
-    Usage: Send plaintext commands, separated by newline/cr or semicolon.          
-           An eventual reply comes terminated with cr+lf.                          
-                                                                                   
-    Important commands:                                                            
-                                                                                   
-    *IDN?     Returns device identifier                                            
-    *RST      Resets device, outputs are 0V.                                       
-    RANGE <value>                                                                  
-              Chooses the shunt resistor index; <value> ranges from 1 to 5.        
-    VOLT?     Returns the voltage across the sense resistor.                       
-    RAW?      Returns the voltage across the sense resistor in raw units.          
-    FLOW      starts acquisition every 1 ms and returns raw hex values                        
-    STOP      resets the raw sample mode.                                                     
-    ALLIN?    Returns all 8 input voltages and temperature.                                   
-    HELP      Print this help text.   
+    Simple optical power meter.
+
+    Usage: Send plaintext commands, separated by newline/cr or semicolon.
+           An eventual reply comes terminated with cr+lf.
+
+    Important commands:
+
+    *IDN?     Returns device identifier
+    *RST      Resets device, outputs are 0V.
+    RANGE <value>
+              Chooses the shunt resistor index; <value> ranges from 1 to 5.
+    VOLT?     Returns the voltage across the sense resistor.
+    RAW?      Returns the voltage across the sense resistor in raw units.
+    FLOW      starts acquisition every 1 ms and returns raw hex values
+    STOP      resets the raw sample mode.
+    ALLIN?    Returns all 8 input voltages and temperature.
+    HELP      Print this help text.
     '''
 
     baudrate = 115200
-    
+
     def __init__(self, port):
         self.serial = self._open_port(port)
         self.serial.write(b'*IDN?;')# flush io buffer
@@ -278,74 +278,74 @@ class PowerMeterComm(object):
         self.range = self.get_range
         self.data = self._read_cal_file()
         #self.set_range(4) #Sets bias resistor to 1k
-        
+
     def _open_port(self, port):
         ser = serial.Serial(port, timeout=1)
         #ser.readline()
         #ser.timeout = 1 #causes problem with nexus 7
         return ser
-        
+
     def close(self):
         self.serial.close()
 
-        
-    
+
+
     def _serial_write(self, string2):
         self.serial.write((string2+';').encode('UTF-8'))
-    
+
     def _serial_read(self):
         msg_string = self.serial.readline().decode()
         # Remove any linefeeds etc
         msg_string = msg_string.rstrip()
         return msg_string
-    
+
     def reset(self):
         self._serial_write('*RST')
         return self._serial_read()
-        
+
     def get_voltage(self):
-        self._serial_write('VOLT?')    
+        self._serial_write('VOLT?')
         voltage = self._serial_read()
         #print voltage
         return voltage
-        
+
     def get_range(self):
         self._serial_write('RANGE?')
         pm_range = self._serial_read()
         #print pm_range
         return pm_range
-    
-    
+
+
     def set_range(self,value):
         self._serial_write('RANGE'+ str(value))
         self.pm_range = value -1
         return self.pm_range
-    
+
     def serial_number(self):
         self.serial.write(b'*IDN?')
         return self.serial.read()
-        
+
         """this section of the code deals with converting between the voltage value and the
     optical power at the wavelength of interest"""
-    
-    resistors = [1e6,110e3,10e3,1e3,20]    #sense resistors adjust to what is on the board
-    
-    file_name = 's5106_interpolated.cal'    #detector calibration file
-    
 
-    
+    resistors = [1e6,110e3,10e3,1e3,20]    #sense resistors adjust to what is on the board
+
+    file_name = 's5106_interpolated.cal'    #detector calibration file
+
+
+
     def _read_cal_file(self): # read in calibration file for sensor
         f = open(self.file_name,'r')
         x = json.load(f)
         f.close()
         return x
-        
+
 
     def volt2amp(self,voltage,range_number):
         self.amp = voltage/self.resistors[range_number]
         return self.amp
-                            
-    
+
+
     def amp2power(self,voltage,wavelength,range_number):
         amp = self.volt2amp(voltage,range_number-1)
         xdata = self.data[0]
@@ -353,11 +353,11 @@ class PowerMeterComm(object):
         i = xdata.index(int(wavelength))
         responsivity = ydata[i]
         power = amp/float(responsivity)
-        
+
         return power
-    
+
     def get_power(self,wavelength):
-        
+
         self.power = self.amp2power(float(self.get_voltage()),wavelength,int(self.get_range()))
         return self.power
 
@@ -366,12 +366,12 @@ class CounterComm(object):
 # Module for communicating with the mini usb counter board
     """
     Simple USB counter.
-    
+
     Usage: Send plaintext commands, separated by newline/cr or semicolon.
            An eventual reply comes terminated with cr+lf.
-    
+
     Important commands:
-    
+
     *IDN?     Returns device identifier
     *RST      Resets device
     TIME     <value>
@@ -379,71 +379,71 @@ class CounterComm(object):
               Default is 1000, minimum is 1, max 65535.
     TIME?     Returns the current gate time.
     COUNTS?   Triggers a counting window, and replies with the number of
-              detected events as a list of space-separated integers.                
-    TTL       Switches to TTL input levels.                                         
-    NIM       Switches input to negative NIM levels.                                
-    LEVEL?    Returns the input level (NIM or TTL).                                 
-    HELP      Print this help text.         
-    
+              detected events as a list of space-separated integers.
+    TTL       Switches to TTL input levels.
+    NIM       Switches input to negative NIM levels.
+    LEVEL?    Returns the input level (NIM or TTL).
+    HELP      Print this help text.
+
     """
-    
+
     baudrate = 115200
-    
+
     def __init__(self, port):
         self.serial = self._open_port(port)
         self._serial_write('*IDN?')# flush io buffer
         print (self._serial_read()) #will read unknown command
 
-        
+
     def _open_port(self, port):
         ser = serial.Serial(port, timeout=1)
         return ser
-    
+
     def _serial_write(self, string):
         self.serial.write(string + '\n')
-    
+
     def _serial_read(self):
         msg_string = self.serial.readline()
         # Remove any linefeeds etc
         msg_string = msg_string.rstrip()
         return msg_string
-    
+
     def reset(self):
         self._serial_write('*RST')
         return self._serial_read()
-        
+
     def get_counts(self):
         self._serial_write('COUNTS?')
         counts = self._serial_read()
         return counts
-        
+
     def get_gate_time(self):
         self._serial_write('TIME?')
         out = self._serial_read()
-        return out 
-        
+        return out
+
     def get_digital(self):
         self._serial_write('LEVEL?')
         level = self._serial_read()
         return level
-    
-    
+
+
     def set_gate_time(self,value):
         self._serial_write('TIME'+ str(int(value)))
-        return 
-    
+        return
+
 
     def set_TTL(self):
         self._serial_write('TTL')
         return
-         
+
     def set_NIM(self):
         self._serial_write('NIM')
         return
-         
-    def close(self): 
+
+    def close(self):
         self.serial.close()
-        
+
     def serial_number(self):
         self._serial_write('*IDN?')
         return self._serial_read()
@@ -454,9 +454,9 @@ class DDSComm(object):
                      [-q] [-b basedivider]
 
    options:
-   -d device :       Device node. If if device is "-", then stdout is used, 
+   -d device :       Device node. If if device is "-", then stdout is used,
                      and the EP1 option disabled. Otherwise, the
-                     location /dev/ioboards/dds0 is used by default. If a file 
+                     location /dev/ioboards/dds0 is used by default. If a file
              is used instead, the control commands used to prepare
              a certain configuration can be stored, and piped to the
              DDS separately with a simple cat >device command later.
@@ -489,59 +489,59 @@ class DDSComm(object):
    this is universal, but it may work. Here is a list of commands with
    their parameters:
     """
-    
+
 
     def __init__(self,port,channel):
         self.DDSDEV = port
         self.channel = channel
 
-    
+
     ##default dds_encode function
     def mode(self,value):
         #set modulation mode: am fm pm
         self.call('mode '+value)
-    
+
     def set_freq(self,value):
         #unit: hz mhz ghz etc
         self.call('frequency '+str(self.channel)+' '+str(value)+' '+'mhz')
-        
+
     def set_power(self,value):
         #unit: ampunit
         self.call('amplitude '+str(self.channel)+' '+str(value)+' '+'ampunits')
-    
+
     def amplitude(self,value,unit):
         #unit: ampunits dbm V mV
         self.call('amplitude '+str(self.channel)+' '+str(value)+' '+unit)
-        
+
     def tuning(self,register,value,unit):
         #unit: ampunits dbm V mV
         self.call('tuning '+str(register)+' '+str(value)+' '+unit)
-    
+
     ##extra preset function
     def start(self):
         #default assume no modulation
         self.reset()
         self.call('levels 2')
         self.call('mode singletone')
-    
+
     def reset_freq(self,freq):
         #compact function assuming freq in MHz, amp to max (1023)
         self.off()
         self.set_freq(freq)
         self.on()
-        
+
     def on(self,ampl=100):
         self.amplitude(ampl,'ampunits')
-    
+
     def off(self):
-        self.amplitude(0,'ampunits')    
-    
+        self.amplitude(0,'ampunits')
+
     def call(self,command):
         #interface function to dds_encode
         #DDSPROG = "/home/qitlab/programs/usbdds/apps/dds_encode"
         DDSPROG = "/home/qitlab/programs/usbdds/apps/dds_encode"
         sp.call(['echo '+command+' \;. |'+DDSPROG+' -T -d '+self.DDSDEV],shell=True)
-    
+
     def reset(self):
         #dds full reset / switch off
         #DDSRESET = "/home/qitlab/programs/usbdds/apps/reset_dds"

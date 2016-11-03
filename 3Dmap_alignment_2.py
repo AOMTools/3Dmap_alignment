@@ -53,6 +53,10 @@ def getCount(miniusb,channel=0,average=10):
 miniusb_port='/dev/serial/by-id/usb-Centre_for_Quantum_Technologies_USB_Counter_Ucnt-QO10-if00'
 miniusb=Countercomm(miniusb_port)
 
+#initiate analogI0
+analogI0_port='/dev/serial/by-id/usb-Centre_for_Quantum_Technologies_Analog_Mini_IO_Unit_MIO-QO13-if00'
+analogI0=AnalogComm(analogI0_port)
+
 #initiate windfreak
 wf_port='/dev/serial/by-id/usb-Windfreak_Synth_Windfreak_CDC_Serial_014571-if00'
 wf=WindFreakUsb2(wf_port)
