@@ -11,6 +11,7 @@ import subprocess as sp
 
 
 #filename
+
 filename='landscape_ext_810_c2.dat'
 
 #telegram
@@ -201,94 +202,103 @@ xscan = np.concatenate(xscan)
 yscan = np.concatenate(yscan)
 Tcount=np.zeros((np.size(xscan),8))
 #sending voltage and measurement
+def start():
+    print('Start the measurement...')
+    for i in range(np.size(xscan)):
+        print('Set Vx Vy to: ',xscan[i],yscan[i])
+        print(np.asarray((xscan[i],yscan[i])))
 
-print('Start the measurement..')
-for i in range(np.size(xscan)):
-    print('Set Vx Vy to: ',xscan[i],yscan[i])
-    print(np.asarray((xscan[i],yscan[i])))
+        setV(xscan[i]+V0x,yscan[i]+V0y)
+        time.sleep(0.5)
 
-    setV(xscan[i]+V0x,yscan[i]+V0y)
-    time.sleep(0.5)
+        #Probeoff
+        dds_probe.off()
 
-    #Probeoff
-    dds_probe.off()
+        #MOToff
+        dds_mot.off()
 
-    #MOToff
-    dds_mot.off()
+        time.sleep(0.5)
 
-    time.sleep(0.5)
+        #Fmotoff=getcount
+        Fmotoff=getCount(miniusb)
+        Tcount[i,3]=Fmotoff
+        print('Fmotoff ',Fmotoff)
 
-    #Fmotoff=getcount
-    Fmotoff=getCount(miniusb)
-    Tcount[i,3]=Fmotoff
-    print('Fmotoff ',Fmotoff)
-
-    #MOTon
-    dds_mot.on(amplmot)
-    (Fmoton,Fmotonmax)=getCount(miniusb,average=300,c=1)
-    Tcount[i,2]=Fmoton
-    print('Fmoton: ',Fmoton)
-    print('Fmoton_max: ',Fmotonmax)
+        #MOTon
+        dds_mot.on(amplmot)
+        (Fmoton,Fmotonmax)=getCount(miniusb,average=300,c=1)
+        Tcount[i,2]=Fmoton
+        print('Fmoton: ',Fmoton)
+        print('Fmoton_max: ',Fmotonmax)
 
 
-    #Hygience check for atom
-    deltaF_tolerance=100
-    if (i%2)==0:
-        print('Checking atom...')
-        if (Fmotonmax-Fmotoff)<=40:
-            print('\x1b[6;30;42m' + 'Fail atom check. Exiting...' + '\x1b[0m')
-            return_initial()
+        #Hygience check for atom
+        deltaF_tolerance=100
+        if (i%3)==0:
+            print('Checking atom...')
+            if (Fmotonmax-Fmotoff)<=40:
+                print('\x1b[6;30;42m' + 'Fail atom check. Exiting...' + '\x1b[0m')
+                return_initial()
 
-            messg='Fail atom check at ' + str(i)+ 'th iteration'
+                messg='Fail atom check at ' + str(i)+ 'th iteration'
+                sp.call(['./telegram_report.sh','Cavity',messg])
+            #	sp.call([READPROG+" -W -e 'msg Cavity Please check and restart measurement' "],shell=True)
+                exit()
+            print('Pass the atom check')
+            print('Continue with measurement')
+        #Probe ON
+        dds_probe.on(amplprobe)
+
+        time.sleep(1)
+
+
+        #P810 measurement and power correction
+        p=getPower(analogIO)
+        Tcount[i,6]=p
+        print('Start correcting power')
+        pac=power_correct(p,dds_810,analogIO)
+        Tcount[i,7]=pac
+        #power correction
+
+        #Tmoton=getcount
+        Tcount[i,4]=getCount(miniusb,average=500)
+
+        #MOT off
+        dds_mot.off()
+
+        time.sleep(0.5)
+
+        #Tmotoff=getcount
+        Tcount[i,5]=getCount(miniusb,average=100)
+
+
+
+        print('Tmoton, Tmotoff ',Tcount[i,4],Tcount[i,5])
+        print('\n')
+        print('Printing P810')
+        print(Tcount[:,6])
+        print('Printing P810 after correcting')
+        print(Tcount[:,7])
+        '''
+        progress_deg=((np.size(xscan)+1)/(i+1))
+        if (progress_deg==2):
+            messg='Progress reported: 50% completed'
             sp.call(['./telegram_report.sh','Cavity',messg])
-        #	sp.call([READPROG+" -W -e 'msg Cavity Please check and restart measurement' "],shell=True)
-            exit()
-        print('Pass the atom check')
-        print('Continue with measurement')
-    #Probe ON
-    dds_probe.on(amplprobe)
+        '''
+    print('Experiment finished')
+    print('Saving data...')
+    result=np.column_stack((xscan,yscan,Tcount))
+    np.savetxt(filename,result,fmt='%1.3f')
 
-    time.sleep(1)
+    sp.call([READPROG+" -W -e 'msg Cavity Experiment finished...' "],shell=True)
 
+    return_initial()
+try:
+    start()
+finally:
+    print('Some errors')
+    return_initial()
+    sp.call([READPROG+" -W -e 'msg ALERT THERE ARE ERRORS...' "],shell=True)
 
-    #P810 measurement and power correction
-    p=getPower(analogIO)
-    Tcount[i,6]=p
-    print('Start correcting power')
-    pac=power_correct(p,dds_810,analogIO)
-    Tcount[i,7]=pac
-    #power correction
-
-    #Tmoton=getcount
-    Tcount[i,4]=getCount(miniusb,average=500)
-
-    #MOT off
-    dds_mot.off()
-
-    time.sleep(0.5)
-
-    #Tmotoff=getcount
-    Tcount[i,5]=getCount(miniusb,average=100)
-
-
-
-    print('Tmoton, Tmotoff ',Tcount[i,4],Tcount[i,5])
-    print('\n')
-    print('Printing P810')
-    print(Tcount[:,6])
-    print('Printing P810 after correcting')
-    print(Tcount[:,7])
-    progress_deg=((np.size(xscan)+1)/(i+1))
-    if (progress_deg==2):
-        messg='Progress reported: 50% completed'
-        sp.call(['./telegram_report.sh','Cavity',messg])
-print('Experiment finished')
-print('Saving data...')
-result=np.column_stack((xscan,yscan,Tcount))
-np.savetxt(filename,result,fmt='%1.3f')
-
-sp.call([READPROG+" -W -e 'msg Cavity Experiment finished...' "],shell=True)
-
-return_initial()
 #Close connections
 #wf.close()
