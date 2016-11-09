@@ -102,8 +102,7 @@ def power_correct(p,dds,analogIO,tolerance=0.03,k1=50):
     target_power=0.35
     setpower_tolerance=target_power*tolerance
 
-    #start at init_power
-    dds.set_power(int(init_power))
+
 
     if cf==True:
         num_turn=0
@@ -134,6 +133,8 @@ def power_correct(p,dds,analogIO,tolerance=0.03,k1=50):
         pac=getPower(analogIO)
         print('Power after correcting : ',pac)
         print('RF power set for the correction : ',ps)
+        #return power rf init_power
+        dds.set_power(int(init_power))
         return (pac)
 
 
@@ -169,8 +170,8 @@ socket.send("CheckVolt 6")
 V0x=float((socket.recv()).split()[-1])
 print('Initial Voltage: ',V0x,V0y)
 #Scanning
-rangeVx=0.09
-rangeVy=0.09
+rangeVx=0.06
+rangeVy=0.06
 stepV=0.03
 numStepx=int(rangeVx/stepV)
 numStepy=int(rangeVy/stepV)
@@ -295,10 +296,14 @@ def start():
     return_initial()
 try:
     start()
-finally:
-    print('Some errors')
-    return_initial()
+except KeyboardInterrupt:
+    print('\x1b[6;30;42m' + 'Abruptly shutting down the program'+'\x1b[0m')
+except Exception:
+    print('There are some errors')
     sp.call([READPROG+" -W -e 'msg ALERT THERE ARE ERRORS...' "],shell=True)
+finally:
+    print('Pos-Party Cleaning up')
+    return_initial()
 
 #Close connections
 #wf.close()

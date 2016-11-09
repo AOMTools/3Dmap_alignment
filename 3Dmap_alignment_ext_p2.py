@@ -12,7 +12,7 @@ import subprocess as sp
 
 #filename
 
-filename='ls_ext_p_2.dat'
+filename='ls_ext_p_1.dat'
 thisfilename=__file__
 #telegram
 READPROG="telegram-cli"
@@ -99,7 +99,7 @@ def power_correct(p,dds,analogIO,tolerance=0.03,k1=70):
     max_power=800
     cf=True
     pac=0
-    target_power=0.36
+    target_power=0.37
     setpower_tolerance=target_power*tolerance
 
 

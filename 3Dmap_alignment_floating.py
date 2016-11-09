@@ -8,11 +8,13 @@ import time
 import zmq
 from sys import exit
 import subprocess as sp
-
-
+import timeit
+from sys import path
+path.append("/home/qitlab/programs/CQTdevices/")
+from tempRH import *
 #filename
 
-filename='ls_ext_p_2.dat'
+filename='data/floating_2.dat'
 thisfilename=__file__
 #telegram
 READPROG="telegram-cli"
@@ -52,6 +54,10 @@ amplmot=500
 amplprobe=120
 ##############################################################################################
 
+#setup for temperature monitor
+temp_port='/dev/serial/by-id/usb-Centre_for_Quantum_Technologies_USB_Tempsense_UTS-QO04-if00'
+t=tempRH(temp_port)
+t.on()
 
 #Functions calls
 ##############################################################################################
@@ -136,15 +142,7 @@ def power_correct(p,dds,analogIO,tolerance=0.03,k1=70):
         #start at init_power
         dds.set_power(int(init_power))
         return (pac,int(ps))
-'''
-def power_set(dds,tar_power=100,step=10):
-    num_step=tar_power/step
-    start_power=init_power
-    for i in range(num_step):
-        dds.set_power(start_power+step)
-        time.sleep(0.1)
-        start_power=start_power+step
-'''
+
 
 
 def return_initial():
@@ -211,137 +209,48 @@ for i, yi in enumerate(ygrid):
 # squeeze lists together to vectors
 xscan = np.concatenate(xscan)
 yscan = np.concatenate(yscan)
-Tcount=np.zeros((np.size(xscan),11))
+num_rep=12
+timewait=300
+Tcount=np.zeros((np.size(xscan),num_rep))
+
+
 #sending voltage and measurement
 def start():
     print('Start the measurement...')
-    for i in range(np.size(xscan)):
-        print('Starting new iteration '+str(i)+'th')
-        print('Set Vx Vy to: ',xscan[i],yscan[i])
-        print(np.asarray((xscan[i],yscan[i])))
+    #tprocess for keep track of duration for each rastering scan
+    tprocess=[]
+    #monitoring temperature
+    temp_monitor=[]
+    #1 hour
+    for j in range(num_rep):
+        t1=timeit.default_timer()
+        temp_monitor_onescan=[]
+        for i in range(np.size(xscan)):
+            temp_monitor_onescan.append(float(t.get_temp()))
+            print(temp_monitor_onescan)
+            print('Starting new iteration '+str(i)+'th')
+            print('Set Vx Vy to: ',xscan[i],yscan[i])
+            print(np.asarray((xscan[i],yscan[i])))
 
-        #setting voltage
-        setV(xscan[i]+V0x,yscan[i]+V0y)
-        time.sleep(0.5)
+            #setting voltage
+            setV(xscan[i]+V0x,yscan[i]+V0y)
+            time.sleep(0.1)
+            T780=getCount(miniusb,average=100)
+            Tcount[i,j]=T780
+        temp_monitor.append(np.mean(temp_monitor_onescan))
+        t2=timeit.default_timer()
+        tprocess.append(t2-t1)
+        time.sleep(timewait)
 
-        #P810 measurement and power correction
-	dds_810.set_power(init_power)
-        p=getPower(analogIO)
-        Tcount[i,6]=p
-        print('Start correcting power')
-        (pac,prf)=power_correct(p,dds_810,analogIO)
-
-        Tcount[i,7]=pac
-        #power correction
-
-
-        #Probeoff
-        dds_probe.off()
-
-        #MOToff
-        dds_mot.off()
-
-        time.sleep(0.5)
-
-        #Fmotoff=getcount
-        Fmotoff=getCount(miniusb)
-        Tcount[i,3]=Fmotoff
-        print('Fmotoff ',Fmotoff)
-
-        #MOTon
-        dds_mot.on(amplmot)
-        (Fmoton,Fmotonmax)=getCount(miniusb,average=300,c=1)
-        Tcount[i,2]=Fmoton
-        print('Fmoton: ',Fmoton)
-        print('Fmoton_max: ',Fmotonmax)
-
-
-        #Hygience check for atom
-        deltaF_tolerance=100
-        if (i%3)==0:
-            print('Checking atom...')
-            if (Fmotonmax-Fmotoff)<=40:
-                print('\x1b[6;30;42m' + 'Fail atom check. Exiting...' + '\x1b[0m')
-                return_initial()
-
-                messg='Fail atom check at ' + str(i)+ 'th iteration'
-                sp.call(['./telegram_report.sh','Cavity',messg])
-            #	sp.call([READPROG+" -W -e 'msg Cavity Please check and restart measurement' "],shell=True)
-                exit()
-            print('Pass the atom check')
-            print('Continue with measurement')
-        #Probe ON
-        dds_probe.on(amplprobe)
-
-        time.sleep(2)
-
-
-
-
-        #Tmoton=getcount
-        Tcount[i,4]=getCount(miniusb,average=500)
-
-        #MOT off
-        dds_mot.off()
-
-        time.sleep(0.5)
-
-        #Tmotoff=getcount
-        Tcount[i,5]=getCount(miniusb,average=100)
-
-
-
-        print('Tmoton, Tmotoff ',Tcount[i,4],Tcount[i,5])
-        print('\n')
-        print('Printing P810')
-        print(Tcount[:,6])
-        print('Printing P810 after correcting')
-        print(Tcount[:,7])
-        '''
-        progress_deg=((np.size(xscan)+1)/(i+1))
-        if (progress_deg==2):
-            messg='Progress reported: 50% completed'
-            sp.call(['./telegram_report.sh','Cavity',messg])
-        '''
-
-
-        print('Offseting P810')
-        #offset P810 power by offset the pac after the correction stage
-        rf_offset=50
-        '''
-        for i in range(10):
-            rf_offset=10
-            dds_810.set_power(prf-rf_offset*(i+1))
-            print('offsetp810 ',str(pac-rf_offset*(i+1)))
-            '''
-
-        #P810 measurement and power correction
-        dds_810.set_power(prf-rf_offset)
-        Tcount[i,8]=getPower(analogIO)
-
-        print('Printing P810 after correcting and offsetting')
-        print(Tcount[:,8])
-        #A2
-        #Probeoff
-        dds_probe.off()
-
-        #MOTon
-        dds_mot.on(amplmot)
-        (Fmoton,Fmotonmax)=getCount(miniusb,average=300,c=1)
-        Tcount[i,9]=Fmoton
-
-        #Probe ON
-        dds_probe.on(amplprobe)
-        time.sleep(2)
-        #Tmoton=getcount
-        Tcount[i,10]=getCount(miniusb,average=500)
 
 
     print('Experiment finished')
     print('Saving data...')
     result=np.column_stack((xscan,yscan,Tcount))
     np.savetxt(filename,result,fmt='%1.3f')
-
+    filename_temp='data/floating_temp_2.dat'
+    np.savetxt(filename_temp,temp_monitor)
+    print('Each rastering takes approximately in seconds ',np.mean(tprocess))
     sp.call([READPROG+" -W -e 'msg Cavity Experiment finished...' "],shell=True)
 
 
@@ -349,8 +258,9 @@ try:
     start()
 except KeyboardInterrupt:
     print('\x1b[6;30;42m' + 'Abruptly shutting down the program'+'\x1b[0m')
-except Exception:
+except Exception,e:
     print('There are some errors')
+    print(str(e))
     sp.call([READPROG+" -W -e 'msg ALERT THERE ARE ERRORS...' "],shell=True)
 finally:
     print('Pos-Party Cleaning up')
