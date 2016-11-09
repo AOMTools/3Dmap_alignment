@@ -14,7 +14,7 @@ path.append("/home/qitlab/programs/CQTdevices/")
 from tempRH import *
 #filename
 
-filename='data/floating_2.dat'
+filename='data/floating_1.dat'
 thisfilename=__file__
 #telegram
 READPROG="telegram-cli"
